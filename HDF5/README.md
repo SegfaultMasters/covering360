@@ -10,6 +10,7 @@ Command ./h5stat -A -T -G -D -S $POC
 
 Debugging
 ---------------
+```
 break H5Dchunk.c:1022 if u = 3
 
 Breakpoint 2, H5D__chunk_init (f=0x60700000de60, dxpl_id=0xa00000000000008, dset=0x606000000c20, dapl_id=0xa00000000000007) at H5Dchunk.c:1022
@@ -17,7 +18,7 @@ Breakpoint 2, H5D__chunk_init (f=0x60700000de60, dxpl_id=0xa00000000000008, dset
 1: dset->shared->layout.u.chunk.dim[u] = 0x0
 2: dset->shared->curr_dims[u] = 0x101
 3: u = 0x3
-
+```
 Backtrace
 -------------------
 ```
