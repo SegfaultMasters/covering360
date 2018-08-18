@@ -1,0 +1,5 @@
+##fileformat=VCFa
+##contig=<ID=19,le=591rl
+#CHROM	POS	ID	REF	ALT	QUAL	FI	INFO	FO	NA0
+NA00002	NA00003
+19	257	G	A	
