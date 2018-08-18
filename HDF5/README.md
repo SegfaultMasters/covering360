@@ -2,7 +2,7 @@
 
 HDF5 is a data model, library, and file format for storing and managing data. It supports an unlimited variety of datatypes, and is designed for flexible and efficient I/O and for high volume and complex data. HDF5 is portable and is extensible, allowing applications to evolve in their use of HDF5. The HDF5 Technology suite includes tools and applications for managing, manipulating, viewing, and analyzing data in the HDF5 format. link: https://portal.hdfgroup.org/display/HDF5/HDF5
 
-##### Vulnerability related to DivByZero__H5D_chunk_POC
+##### DivByZero__H5D_chunk_POC
 
 A SIGFPE signal is raised in the function H5D__chunk_init of H5Dchunk.c in the 'hdf5' package 1.10.2 during an attempted parse of a crafted HDF file, because of incorrect protection against division by zero. The value of 'dset->shared->layout.u.chunk.dim[u]' becomes zero on the iteration when u=3. This may leads to Denial of Service (application crash).
 
