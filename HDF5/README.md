@@ -1,16 +1,15 @@
-A SIGFPE is raised in the function H5D__chunk_init of H5Dchunk.c in the 'hdf5' package 1.10.2 during an attempted parse of a crafted HDF file, because of incorrect protection against division by zero. The value of 'dset->shared->layout.u.chunk.dim[u]' becomes zero on the iteration when u=3. This may leads to Denial of Service (application crash).
+Description
+--------------
+A SIGFPE signal is raised in the function H5D__chunk_init of H5Dchunk.c in the 'hdf5' package 1.10.2 during an attempted parse of a crafted HDF file, because of incorrect protection against division by zero. The value of 'dset->shared->layout.u.chunk.dim[u]' becomes zero on the iteration when u=3. This may leads to Denial of Service (application crash).
 
-Affected version:
+Affected version - 1.10.2 (compiled from source)
+---------------
 
-1.10.2 (compiled from source)
+Command ./h5stat -A -T -G -D -S $POC
+---------------
 
-Command:
-./h5stat -A -T -G -D -S $POC
-
-Please do confirm if you are able to reproduce the issue with this reproducer
-
-Debugging:
-
+Debugging
+---------------
 break H5Dchunk.c:1022 if u = 3
 
 Breakpoint 2, H5D__chunk_init (f=0x60700000de60, dxpl_id=0xa00000000000008, dset=0x606000000c20, dapl_id=0xa00000000000007) at H5Dchunk.c:1022
@@ -19,8 +18,9 @@ Breakpoint 2, H5D__chunk_init (f=0x60700000de60, dxpl_id=0xa00000000000008, dset
 2: dset->shared->curr_dims[u] = 0x101
 3: u = 0x3
 
-Backtrace:
-
+Backtrace
+-------------------
+```
 #0  H5D__chunk_init (f=0x60700000de60, dxpl_id=0xa00000000000008, dset=0x606000000c20, dapl_id=0xa00000000000007) at H5Dchunk.c:1022
 #1  0x00007ffff6285bef in H5D__layout_oh_read (dataset=0x606000000c20, dxpl_id=0xa00000000000008, dapl_id=0xa00000000000007, plist=0x60400000cfd0) at H5Dlayout.c:653
 #2  0x00007ffff62668fa in H5D__open_oid (dataset=0x606000000c20, dapl_id=0xa00000000000007, dxpl_id=0xa00000000000008) at H5Dint.c:1598
@@ -43,3 +43,4 @@ Backtrace:
 #19 0x000000000040c21e in ?? ()
 #20 0x00007ffff5ba7830 in __libc_start_main (main=0x40bb52, argc=0x7, argv=0x7fffffffddf8, init=<optimized out>, fini=<optimized out>, rtld_fini=<optimized out>, stack_end=0x7fffffffdde8) at ../csu/libc-start.c:291
 #21 0x0000000000404e59 in ?? ()
+```
