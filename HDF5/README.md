@@ -4,7 +4,7 @@ A SIGFPE signal is raised in the function H5D__chunk_init of H5Dchunk.c in the '
 
 #### Affected version - 1.10.2 (compiled from source)
 
-##### Command ./h5stat -A -T -G -D -S $POC
+##### Command ./h5stat -A -T -G -D -S $POC (DivByZero__H5D_chunk_POC)
 
 ###### Debugging
 
