@@ -53,7 +53,7 @@ Breakpoint 2, H5D__chunk_init (f=0x60700000de60, dxpl_id=0xa00000000000008, dset
 
 ##### Description
 
-A stack-overflow has been detected in the function H5P__get_cb() in H5Pint.c of HDF5 package (1.10.2) during an attempted parse of a crafted HDF file, because of handling an exceptional case when the buffer is too large. This cause the program to crash with segmenation fault SIGSEGV. 
+A stack-overflow has been detected in the function H5P__get_cb() in H5Pint.c of HDF5 package (1.10.2) during an attempted parse of a crafted HDF file, because of improper handling an exceptional case when the buffer is too large. This cause the program to crash with segmenation fault SIGSEGV. 
 
 #### Affected version - 1.10.2 (compiled from source)
 
