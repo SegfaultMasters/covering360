@@ -7,7 +7,7 @@ Wiki: https://en.wikipedia.org/wiki/Xfig
 
 ## SIGSEGV due to Memory corruption in free_comments()
 
-Function read_splineobject() in read.c, at line 1078 `s` struct is being passed to Spline_malloc() (internally calls malloc() ), which returns an invalid address '0xbebebebe'.
+Function read_splineobject() in read.c, at line [1078](https://sourceforge.net/p/mcj/fig2dev/ci/3.2.7/tree/fig2dev/read.c#l1078) `s` struct is being passed to Spline_malloc() (internally calls malloc() ), which returns an invalid address '0xbebebebe'.
 
 
 ```
@@ -36,7 +36,7 @@ gef➤  p s->comments
 $39 = (struct f_comment *) 0xbebebebebebebebe`
 ```
 
-In free_comments(), at line 172 when trying to access d->next, Segmentation fault is being triggered as it's pointing to an invalid memory address. 
+In free_comments(), at line [172](https://sourceforge.net/p/mcj/fig2dev/ci/3.2.7/tree/fig2dev/free.c#l172) when trying to access d->next, Segmentation fault is being triggered as it's pointing to an invalid memory address. 
 
 ```
 gef➤  p d->next
