@@ -7,7 +7,7 @@ Wiki: https://en.wikipedia.org/wiki/Xfig
 
 ## SIGSEGV due to Memory corruption in free_comments()
 
-In read_splineobject(), at line 1078 `s` struct is being passed to Spline_malloc() (internally calls malloc() ), which returns an invalid address '0xbebebebe'.
+Function read_splineobject() in read.c, at line 1078 `s` struct is being passed to Spline_malloc() (internally calls malloc() ), which returns an invalid address '0xbebebebe'.
 
 
 ```
