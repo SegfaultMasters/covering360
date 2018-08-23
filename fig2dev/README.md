@@ -141,4 +141,100 @@ SUMMARY: AddressSanitizer: SEGV /home/woot/Desktop/fig2dev-3.2.7a/fig2dev/free.c
 
 
 Reproducer file -  [reproducer](https://github.com/SegfaultMasters/covering360/blob/master/fig2dev/free_comments_00)
+
+
+
+
+
+## SIGSEGV - NULL pointer dereference in compute_open_spline()
+
+A macro COPY_CONTROL_POINT at line [192](https://sourceforge.net/p/mcj/fig2dev/ci/master/tree/fig2dev/trans_spline.c#l192) in function compute_open_spline(), swaps the value of passed variables, leaving the value of p2 as 0x0. 
+
+
+~~~
+ #define COPY_CONTROL_POINT(P0, S0, P1, S1) \
+      P0 = P1; \
+      S0 = S1
+~~~
+	  
+ COPY_CONTROL_POINT(p2, s2, p1->next, s1->next);
+ 
+ 
+~~~
+gef➤  p p1->next
+$65 = (struct f_point *) 0x0
+~~~
+ 
+ 
+Later when accessing  `next`, the member of structure pointer `p2`, leads to a segmentation fault as it try to access an invalid memory address.
+
+
+`if (p2->next == NULL)`
+
+
+
+
+
+###### **Debugging:**
+~~~
+$rax   : 0x0               
+$rbx   : 0x7fffffffd600      →  0x00007fffffffda40  →  0x00007fffffffda70  →  0x00007fffffffdbd0  →  0x00007fffffffdc00  →  0x00007fffffffdc30  →  0x00007fffffffdd10  →  0x0000000000516090
+$rcx   : 0x0               
+$rdx   : 0x0               
+$rsp   : 0x7fffffffd4e0      →  0x000060800000bf28  →  0x0000000000000000
+$rbp   : 0x7fffffffd550      →  0x00007fffffffd630  →  0x00007fffffffda70  →  0x00007fffffffdbd0  →  0x00007fffffffdc00  →  0x00007fffffffdc30  →  0x00007fffffffdd10  →  0x0000000000516090
+$rsi   : 0x0               
+$rdi   : 0x7ffff715fed0      →  0x0000000000000001
+$rip   : 0x423650            →  <compute_open_spline+779> mov rax, QWORD PTR [rax+0x8]
+~~~
+
+──────────────────────────────────────────────────────────────
+
+~~~
+ 0x423644 <compute_open_spline+767> mov    rdi, rax
+ 0x423647 <compute_open_spline+770> call   0x4022b0 <__asan_report_load8@plt>
+ 0x42364c <compute_open_spline+775> mov    rax, QWORD PTR [rbp-0x30]
+→   0x423650 <compute_open_spline+779> mov    rax, QWORD PTR [rax+0x8]
+ 0x423654 <compute_open_spline+783> test   rax, rax
+ 0x423657 <compute_open_spline+786> jne    0x42366b <compute_open_spline+806>
+ 0x423659 <compute_open_spline+788> mov    rax, QWORD PTR [rbp-0x30]
+ 0x42365d <compute_open_spline+792> mov    QWORD PTR [rbp-0x28], rax
+ 0x423661 <compute_open_spline+796> mov    rax, QWORD PTR [rbp-0x18]
+~~~
+
+ 
+ ──────────────────────────────────────────────────────────────
+ 
+~~~
+ gef➤  bt 
+#0  0x0000000000423650 in compute_open_spline (spline=0x60800000bf20, precision=0.5) at trans_spline.c:193
+#1  0x0000000000426667 in create_line_with_spline (s=0x60800000bf20) at trans_spline.c:494
+#2  0x0000000000420c76 in read_splineobject (fp=0x61600000fc80) at read.c:1207
+#3  0x0000000000419669 in read_objects (fp=0x61600000fc80, obj=0x7fffffffdc80) at read.c:383
+#4  0x0000000000418841 in readfp_fig (fp=0x61600000fc80, obj=0x7fffffffdc80) at read.c:172
+#5  0x000000000041872a in read_fig (file_name=0x7fffffffe1e9 "/home/woot/Desktop/xfig/ou/crashes/id:000001,sig:11,src:000027,op:flip1,pos:76", obj=0x7fffffffdc80) at read.c:142
+#6  0x0000000000410ea4 in main (argc=0x4, argv=0x7fffffffddf8) at fig2dev.c:424
+~~~
+
+
+
+ 
+ 
+###### **ASAN Output:**
+ 
+~~~
+ ASAN:SIGSEGV
+=================================================================
+==75521==ERROR: AddressSanitizer: SEGV on unknown address 0x000000000008 (pc 0x00000044562d bp 0x000000000000 sp 0x7fffffffd4d0 T0)
+    #0 0x44562c  (/usr/local/bin/fig2dev+0x44562c)
+    #1 0x446c68  (/usr/local/bin/fig2dev+0x446c68)
+    #2 0x43b3db  (/usr/local/bin/fig2dev+0x43b3db)
+    #3 0x43e09f  (/usr/local/bin/fig2dev+0x43e09f)
+    #4 0x404103  (/usr/local/bin/fig2dev+0x404103)
+    #5 0x7ffff67b782f in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x2082f)
+    #6 0x406038  (/usr/local/bin/fig2dev+0x406038)
+~~~
+
+
+Reproducer file - [Reproducer](https://github.com/SegfaultMasters/covering360/blob/master/fig2dev/compute_open_spline_01)
  
