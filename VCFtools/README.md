@@ -8,11 +8,11 @@ Vendor: https://vcftools.github.io/man_latest.html
 ## SIGABRT due to received negative value in bcf_entry::set_ALT()
 
 There is an SIGABRT signal due to a received zero value (*in n_allele*), which is being passed to `ALT.resize(n_allele-1)` in function `bcf_entry::set_ALT()` at bcf_entry_setters.cpp.
-The zero value is being introduced in `bcf_entry::parse_basic_entry()` function (bcf_entry.ccp),  where `N_allele` value is being assigned by right shifting `n_allele_info` by 16, which again is zero.  
+The value of n_allele was evaluated from n_allele_info >> 16 in `bcf_entry::parse_basic_entry()` function (bcf_entry.ccp).
 
 `N_allele  = n_allele_info >> 16`
 
-When the `n_allele` value is zero, the computation(0-1) will result in -1 negative value, giving an invalid length. 
+When the `n_allele` value is zero, the computation(0-1) will result in -1 negative value. 
 Whenever a invalid size is passed to vector::resize, it throws an std::length_error exception, internally calling abort(), raising an SIGABRT.  
 
 
