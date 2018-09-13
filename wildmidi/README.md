@@ -63,7 +63,7 @@ Playing $POC
 
 
 
-###### **Backtrace:**
+### **Backtrace:**
  
  ```
 (gdb) bt
@@ -102,4 +102,4 @@ gs             0x0	0
 ```
 
 
-Please do confirm if you are able to reproduce the issue with this [Reproducer](https://github.com/SegfaultMasters/covering360/blob/master/wildmidi/hang_main_00)
+ [Reproducer](https://github.com/SegfaultMasters/covering360/blob/master/wildmidi/hang_main_00)
