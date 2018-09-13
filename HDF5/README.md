@@ -49,6 +49,72 @@ Breakpoint 2, H5D__chunk_init (f=0x60700000de60, dxpl_id=0xa00000000000008, dset
 ```
 =============================================================
 
+## Divided By Zero - H5D__chunk_set_info_real_div_by_zero
+
+A SIGFPE signal is raised in the function H5D__chunk_set_info_real() of H5Dchunk.c in the HDF HDF5 1.10.3 during an attempted parse of a crafted HDF file, because of incorrect protection against division by zero
+
+#### Affected version - 1.10.3 (latest release)
+
+#### Command ./h5stat -e -n --xml $POC (H5D__chunk_set_info_real_div_by_zero)
+
+### Source
+```
+ layout->chunks[u] = ((curr_dims[u] + layout->dim[u]) - 1) / layout->dim[u];
+
+```
+### Debugging
+
+```
+x/i $pc
+=> 0x7ffff700b505 <H5D__chunk_set_info+437>:	div    r14
+
+info registers 
+rax            0x3	0x3
+rbx            0x555555837ab0	0x555555837ab0
+rcx            0x0	0x0
+rdx            0x0	0x0
+rsi            0x0	0x0
+rdi            0x555555837a10	0x555555837a10
+rbp            0x555555838678	0x555555838678
+rsp            0x7fffffffd350	0x7fffffffd350
+r8             0x1	0x1
+r9             0x1	0x1
+r10            0x11f	0x11f
+r11            0x555555838478	0x555555838478
+r12            0x1	0x1
+r13            0x4	0x4
+r14            0x0	0x0
+r15            0xffffffffffffffff	0xffffffffffffffff
+rip            0x7ffff700b505	0x7ffff700b505 <H5D__chunk_set_info+437>
+eflags         0x10217	[ CF PF AF IF RF ]
+cs             0x33	0x33
+ss             0x2b	0x2b
+ds             0x0	0x0
+es             0x0	0x0
+fs             0x0	0x0
+gs             0x0	0x0
+
+```
+#### Backtrace
+
+```
+
+[#0] 0x7ffff700b505 → Name: H5D__chunk_set_info_real(max_dims=0x555555838678, curr_dims=0x555555838478, ndims=0x1, layout=0x555555837bb0)
+[#1] 0x7ffff700b505 → Name: H5D__chunk_set_info(dset=0x555555837a10)
+[#2] 0x7ffff700c42c → Name: H5D__chunk_init(f=<optimized out>, dset=0x555555837a10, dapl_id=<optimized out>)
+[#3] 0x7ffff7093ec3 → Name: H5D__layout_oh_read(dataset=0x555555837a10, dapl_id=0xa00000000000007, plist=0x555555831d70)
+[#4] 0x7ffff70807aa → Name: H5D__open_oid(dapl_id=0xa00000000000007, dataset=0x555555837a10)
+[#5] 0x7ffff70807aa → Name: H5D_open(loc=0x7fffffffd530, dapl_id=0xa00000000000007)
+[#6] 0x7ffff7082ceb → Name: H5D__open_name(loc=0x7fffffffd5c0, name=0x555555836f30 "/Dataset1", dapl_id=0xa00000000000007)
+[#7] 0x7ffff6fe1d98 → Name: H5Dopen2(loc_id=0x100000000000000, name=0x555555836f30 "/Dataset1", dapl_id=<optimized out>)
+[#8] 0x5555555d79ca → test rax, rax
+[#9] 0x5555555db6e8 → test eax, eax
+
+```
+### Fault occurred - SIGFPE
+
+=============================================================
+
 ## Stack Overflow - stackoverflow_H5P__get_cb
 
 ##### Description
