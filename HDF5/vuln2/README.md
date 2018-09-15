@@ -8,7 +8,7 @@ A SIGFPE signal is raised in the function H5D__create_chunk_file_map_hyper() of 
 
 #### Affected version - 1.10.3 and before (compiled from source)
 
-##### Command h5dump -r -d BAG_root/metadata $POC 
+##### Command: h5dump -r -d BAG_root/metadata $POC 
 
 ###### Debugging
 
@@ -28,7 +28,7 @@ Program received signal SIGFPE, Arithmetic exception.
 1578	        scaled[u] = start_scaled[u] = sel_start[u] / fm->layout->u.chunk.dim[u];
 
 (gdb) x/i $pc
-###### => 0x7ffff6140acf <H5D__create_chunk_file_map_hyper+1018>:	div    rdi
+=> 0x7ffff6140acf <H5D__create_chunk_file_map_hyper+1018>:	div    rdi
 
 (gdb) info registers 
 rax            0x7ffff668b280	140737327444608
@@ -63,18 +63,18 @@ gs             0x0	0
 ASAN:DEADLYSIGNAL
 =================================================================
 ==37286==ERROR: AddressSanitizer: FPE on unknown address 0x7ffff6140acf (pc 0x7ffff6140acf bp 0x7fffffffb340 sp 0x7fffffffaa30 T0)
-    #0 0x7ffff6140ace in H5D__create_chunk_file_map_hyper /home/ethan/hdf5-1_10_2_gcc/src/H5Dchunk.c:1578
-    #1 0x7ffff613dfa0 in H5D__chunk_io_init /home/ethan/hdf5-1_10_2_gcc/src/H5Dchunk.c:1169
-    #2 0x7ffff61b6702 in H5D__read /home/ethan/hdf5-1_10_2_gcc/src/H5Dio.c:589
-    #3 0x7ffff61b2515 in H5Dread /home/ethan/hdf5-1_10_2_gcc/src/H5Dio.c:198
-    #4 0x5555555bce14  (/home/ethan/hdf5-1_10_2_gcc/hdf5/bin/h5dump+0x68e14)
-    #5 0x5555555be2b4  (/home/ethan/hdf5-1_10_2_gcc/hdf5/bin/h5dump+0x6a2b4)
-    #6 0x5555555cc6de  (/home/ethan/hdf5-1_10_2_gcc/hdf5/bin/h5dump+0x786de)
-    #7 0x555555582a85  (/home/ethan/hdf5-1_10_2_gcc/hdf5/bin/h5dump+0x2ea85)
-    #8 0x5555555881c1  (/home/ethan/hdf5-1_10_2_gcc/hdf5/bin/h5dump+0x341c1)
-    #9 0x555555579872  (/home/ethan/hdf5-1_10_2_gcc/hdf5/bin/h5dump+0x25872)
+    #0 0x7ffff6140ace in H5D__create_chunk_file_map_hyper /home/ethan/hdf5-1_10_3_gcc/src/H5Dchunk.c:1578
+    #1 0x7ffff613dfa0 in H5D__chunk_io_init /home/ethan/hdf5-1_10_3_gcc/src/H5Dchunk.c:1169
+    #2 0x7ffff61b6702 in H5D__read /home/ethan/hdf5-1_10_3_gcc/src/H5Dio.c:589
+    #3 0x7ffff61b2515 in H5Dread /home/ethan/hdf5-1_10_3_gcc/src/H5Dio.c:198
+    #4 0x5555555bce14  (/home/ethan/hdf5-1_10_3_gcc/hdf5/bin/h5dump+0x68e14)
+    #5 0x5555555be2b4  (/home/ethan/hdf5-1_10_3_gcc/hdf5/bin/h5dump+0x6a2b4)
+    #6 0x5555555cc6de  (/home/ethan/hdf5-1_10_3_gcc/hdf5/bin/h5dump+0x786de)
+    #7 0x555555582a85  (/home/ethan/hdf5-1_10_3_gcc/hdf5/bin/h5dump+0x2ea85)
+    #8 0x5555555881c1  (/home/ethan/hdf5-1_10_3_gcc/hdf5/bin/h5dump+0x341c1)
+    #9 0x555555579872  (/home/ethan/hdf5-1_10_3_gcc/hdf5/bin/h5dump+0x25872)
     #10 0x7ffff5aa41c0 in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x211c0)
-    #11 0x555555572129  (/home/ethan/hdf5-1_10_2_gcc/hdf5/bin/h5dump+0x1e129)
+    #11 0x555555572129  (/home/ethan/hdf5-1_10_3_gcc/hdf5/bin/h5dump+0x1e129)
 ```
 =============================================================
 
