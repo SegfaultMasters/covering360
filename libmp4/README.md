@@ -12,7 +12,7 @@ The function `mp4v2::impl::MP4Track::FinishSdtp()` in `mp4track.cpp`  (libmp4v2 
   
  
 ###### **Affected version:**
-MP4v2 2.0.0
+MP4v2 2.1.0
 
 
 
