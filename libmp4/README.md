@@ -6,7 +6,7 @@ and is an exact copy of the library distributed in the mpeg4ip package.
 Vendor: -
 
 
-## Buffer Overflow in mp4v2::impl::MP4Track::FinishSdtp()
+## Heap Overflow in mp4v2::impl::MP4Track::FinishSdtp()
   
 The function `mp4v2::impl::MP4Track::FinishSdtp()` in `mp4track.cpp`  (libmp4v2 - 2.1.0)  mishandles compatibleBrand while processing a crafted mp4 file which leads to heap overflow, causing denial of service.
   
