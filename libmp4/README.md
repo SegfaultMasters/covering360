@@ -12,7 +12,7 @@ The function `mp4v2::impl::MP4Track::FinishSdtp()` in `mp4track.cpp`  (libmp4v2 
   
  
 ###### **Affected version:**
-libmp4v2 2.1.0 (Tested against - Fedora, EPEL, Debian)
+libmp4v2 - 2.1.0 (Tested against - Fedora, EPEL, Debian)
 
 
 ###### **Command**: 
