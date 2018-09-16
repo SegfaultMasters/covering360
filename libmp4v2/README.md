@@ -196,7 +196,7 @@ gs             0x0	0x0
 
 
 ##### Description
-The function MP4Free() at line 338 in mp4property.cpp (libmp4v2 - 2.1.0) internally calls free() on a invalid pointer, raising a SIGABRT signal.
+The function `MP4Free()` in `mp4property.cpp` (libmp4v2 - 2.1.0) internally calls free() on a invalid pointer, raising a SIGABRT signal.
 
 
 ###### **Affected version:**
