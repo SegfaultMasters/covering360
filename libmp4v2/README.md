@@ -187,3 +187,255 @@ fs             0x0	0x0
 gs             0x0	0x0
 ```
 
+
+
+
+
+## Invalid free in MP4Free()
+
+
+
+##### Description
+The function MP4Free() at line 338 in mp4property.cpp (libmp4v2 - 2.1.0) internally calls free() on a invalid pointer, raising a SIGABRT signal.
+
+
+###### **Affected version:**
+libmp4v2 - 2.1.0 (Tested against - Fedora, EPEL, Debian)
+
+
+###### **Command**: 
+./mp4art --add image.png --art-any $POC
+
+
+
+### Debugging
+
+```
+→ 4392	             free(p);
+```
+
+```
+[#0] 0x7ffff7af8968 → Name: MP4Free(p=0x7ffff74aab78 <main_arena+88>)
+[#1] 0x7ffff7b18e8b → Name: mp4v2::impl::MP4StringProperty::~MP4StringProperty(this=0x63a560, __in_chrg=<optimized out>)
+[#2] 0x7ffff7b18f12 → Name: mp4v2::impl::MP4StringProperty::~MP4StringProperty(this=0x63a560, __in_chrg=<optimized out>)
+[#3] 0x7ffff7af98a0 → Name: mp4v2::impl::MP4Atom::~MP4Atom(this=0x63a470, __in_chrg=<optimized out>)
+[#4] 0x7ffff7acf3f2 → Name: mp4v2::impl::MP4FtypAtom::~MP4FtypAtom(this=0x63a470, __in_chrg=<optimized out>)
+[#5] 0x7ffff7acf422 → Name: mp4v2::impl::MP4FtypAtom::~MP4FtypAtom(this=0x63a470, __in_chrg=<optimized out>)
+[#6] 0x7ffff7afa1b8 → Name: mp4v2::impl::MP4Atom::ReadAtom(file=@0x639990, pParentAtom=0x63a2f0)
+[#7] 0x7ffff7afaea6 → Name: mp4v2::impl::MP4Atom::ReadChildAtoms(this=0x63a2f0)
+[#8] 0x7ffff7afa361 → Name: mp4v2::impl::MP4Atom::Read(this=0x63a2f0)
+[#9] 0x7ffff7b02d3e → Name: mp4v2::impl::MP4File::ReadFromFile(this=0x639990)
+
+
+
+[#0] 0x7ffff711b428 → Name: __GI_raise(sig=0x6)
+[#1] 0x7ffff711d02a → Name: __GI_abort()
+[#2] 0x7ffff715d7ea → Name: __libc_message(do_abort=0x2, fmt=0x7ffff7276ed8 "*** Error in `%s': %s: 0x%s ***\n")
+[#3] 0x7ffff716637a → Name: malloc_printerr(ar_ptr=<optimized out>, ptr=<optimized out>, str=0x7ffff7273caf "free(): invalid pointer", action=0x3)
+[#4] 0x7ffff716637a → Name: _int_free(av=<optimized out>, p=<optimized out>, have_lock=0x0)
+[#5] 0x7ffff716a53c → Name: __GI___libc_free(mem=<optimized out>)
+[#6] 0x7ffff7af8974 → Name: MP4Free(p=0x7ffff74aab78 <main_arena+88>)
+[#7] 0x7ffff7b18e8b → Name: mp4v2::impl::MP4StringProperty::~MP4StringProperty(this=0x63a560, __in_chrg=<optimized out>)
+[#8] 0x7ffff7b18f12 → Name: mp4v2::impl::MP4StringProperty::~MP4StringProperty(this=0x63a560, __in_chrg=<optimized out>)
+[#9] 0x7ffff7af98a0 → Name: mp4v2::impl::MP4Atom::~MP4Atom(this=0x63a470, __in_chrg=<optimized out>)
+```
+
+
+```
+gef➤  p p
+$38 = (void *) 0x63a520
+
+
+gef➤  p p
+$39 = (void *) 0x63a540
+
+
+gef➤  p p
+$48 = (void *) 0x7ffff74aab78 <main_arena+88>
+```
+
+
+
+
+### Valgrind report 
+
+```
+==57947== Invalid read of size 8
+==57947==    at 0x4EFEE80: mp4v2::impl::MP4StringProperty::~MP4StringProperty() (mp4property.cpp:338)
+==57947==    by 0x4EFEF11: mp4v2::impl::MP4StringProperty::~MP4StringProperty() (mp4property.cpp:340)
+==57947==    by 0x4EDF89F: mp4v2::impl::MP4Atom::~MP4Atom() (mp4atom.cpp:66)
+==57947==    by 0x4EB53F1: mp4v2::impl::MP4FtypAtom::~MP4FtypAtom() (in /usr/local/lib/libmp4v2.so.2.1.0)
+==57947==    by 0x4EB5421: mp4v2::impl::MP4FtypAtom::~MP4FtypAtom() (atoms.h:325)
+==57947==    by 0x4EE01B7: mp4v2::impl::MP4Atom::ReadAtom(mp4v2::impl::MP4File&, mp4v2::impl::MP4Atom*) (mp4atom.cpp:199)
+==57947==    by 0x4EE0EA5: mp4v2::impl::MP4Atom::ReadChildAtoms() (mp4atom.cpp:429)
+==57947==    by 0x4EE0360: mp4v2::impl::MP4Atom::Read() (mp4atom.cpp:235)
+==57947==    by 0x4EE8D3D: mp4v2::impl::MP4File::ReadFromFile() (mp4file.cpp:430)
+==57947==    by 0x4EE7851: mp4v2::impl::MP4File::Modify(char const*) (mp4file.cpp:166)
+==57947==    by 0x4ED333A: MP4Modify (mp4.cpp:231)
+==57947==    by 0x406547: mp4v2::util::ArtUtility::actionAdd(mp4v2::util::Utility::JobContext&) (mp4art.cpp:149)
+==57947==  Address 0x5e7dff8 is 0 bytes after a block of size 8 alloc'd
+==57947==    at 0x4C2DB8F: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==57947==    by 0x4C2FDEF: realloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==57947==    by 0x4EAE618: mp4v2::impl::MP4Realloc(void*, unsigned int) (mp4util.h:80)
+==57947==    by 0x4F03DA2: mp4v2::impl::MP4StringArray::Resize(unsigned int) (mp4array.h:136)
+==57947==    by 0x4EFEF56: mp4v2::impl::MP4StringProperty::SetCount(unsigned int) (mp4property.cpp:346)
+==57947==    by 0x4EFEDE1: mp4v2::impl::MP4StringProperty::MP4StringProperty(mp4v2::impl::MP4Atom&, char const*, bool, bool, bool) (mp4property.cpp:330)
+==57947==    by 0x4EB5171: mp4v2::impl::MP4FtypAtom::MP4FtypAtom(mp4v2::impl::MP4File&) (atom_ftyp.cpp:32)
+==57947==    by 0x4EE2DBC: mp4v2::impl::MP4Atom::factory(mp4v2::impl::MP4File&, mp4v2::impl::MP4Atom*, char const*) (mp4atom.cpp:868)
+==57947==    by 0x4EDFA3A: mp4v2::impl::MP4Atom::CreateAtom(mp4v2::impl::MP4File&, mp4v2::impl::MP4Atom*, char const*) (mp4atom.cpp:78)
+==57947==    by 0x4EDFF89: mp4v2::impl::MP4Atom::ReadAtom(mp4v2::impl::MP4File&, mp4v2::impl::MP4Atom*) (mp4atom.cpp:168)
+==57947==    by 0x4EE0EA5: mp4v2::impl::MP4Atom::ReadChildAtoms() (mp4atom.cpp:429)
+==57947==    by 0x4EE0360: mp4v2::impl::MP4Atom::Read() (mp4atom.cpp:235)
+==57947== 
+==57947== Invalid free() / delete / delete[] / realloc()
+==57947==    at 0x4C2EDEB: free (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==57947==    by 0x4EDE973: MP4Free (mp4.cpp:4392)
+==57947==    by 0x4EFEE8A: mp4v2::impl::MP4StringProperty::~MP4StringProperty() (mp4property.cpp:338)
+==57947==    by 0x4EFEF11: mp4v2::impl::MP4StringProperty::~MP4StringProperty() (mp4property.cpp:340)
+==57947==    by 0x4EDF89F: mp4v2::impl::MP4Atom::~MP4Atom() (mp4atom.cpp:66)
+==57947==    by 0x4EB53F1: mp4v2::impl::MP4FtypAtom::~MP4FtypAtom() (in /usr/local/lib/libmp4v2.so.2.1.0)
+==57947==    by 0x4EB5421: mp4v2::impl::MP4FtypAtom::~MP4FtypAtom() (atoms.h:325)
+==57947==    by 0x4EE01B7: mp4v2::impl::MP4Atom::ReadAtom(mp4v2::impl::MP4File&, mp4v2::impl::MP4Atom*) (mp4atom.cpp:199)
+==57947==    by 0x4EE0EA5: mp4v2::impl::MP4Atom::ReadChildAtoms() (mp4atom.cpp:429)
+==57947==    by 0x4EE0360: mp4v2::impl::MP4Atom::Read() (mp4atom.cpp:235)
+==57947==    by 0x4EE8D3D: mp4v2::impl::MP4File::ReadFromFile() (mp4file.cpp:430)
+==57947==    by 0x4EE7851: mp4v2::impl::MP4File::Modify(char const*) (mp4file.cpp:166)
+==57947==  Address 0x50 is not stack'd, malloc'd or (recently) free'd
+==57947== 
+==57947== Mismatched free() / delete / delete []
+==57947==    at 0x4C2EDEB: free (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==57947==    by 0x4EDE973: MP4Free (mp4.cpp:4392)
+==57947==    by 0x4EFEE8A: mp4v2::impl::MP4StringProperty::~MP4StringProperty() (mp4property.cpp:338)
+==57947==    by 0x4EFEF11: mp4v2::impl::MP4StringProperty::~MP4StringProperty() (mp4property.cpp:340)
+==57947==    by 0x4EDF89F: mp4v2::impl::MP4Atom::~MP4Atom() (mp4atom.cpp:66)
+==57947==    by 0x4EB53F1: mp4v2::impl::MP4FtypAtom::~MP4FtypAtom() (in /usr/local/lib/libmp4v2.so.2.1.0)
+==57947==    by 0x4EB5421: mp4v2::impl::MP4FtypAtom::~MP4FtypAtom() (atoms.h:325)
+==57947==    by 0x4EE01B7: mp4v2::impl::MP4Atom::ReadAtom(mp4v2::impl::MP4File&, mp4v2::impl::MP4Atom*) (mp4atom.cpp:199)
+==57947==    by 0x4EE0EA5: mp4v2::impl::MP4Atom::ReadChildAtoms() (mp4atom.cpp:429)
+==57947==    by 0x4EE0360: mp4v2::impl::MP4Atom::Read() (mp4atom.cpp:235)
+==57947==    by 0x4EE8D3D: mp4v2::impl::MP4File::ReadFromFile() (mp4file.cpp:430)
+==57947==    by 0x4EE7851: mp4v2::impl::MP4File::Modify(char const*) (mp4file.cpp:166)
+==57947==  Address 0x5e7df70 is 0 bytes inside a block of size 56 alloc'd
+==57947==    at 0x4C2E0EF: operator new(unsigned long) (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==57947==    by 0x4EB5147: mp4v2::impl::MP4FtypAtom::MP4FtypAtom(mp4v2::impl::MP4File&) (atom_ftyp.cpp:32)
+==57947==    by 0x4EE2DBC: mp4v2::impl::MP4Atom::factory(mp4v2::impl::MP4File&, mp4v2::impl::MP4Atom*, char const*) (mp4atom.cpp:868)
+==57947==    by 0x4EDFA3A: mp4v2::impl::MP4Atom::CreateAtom(mp4v2::impl::MP4File&, mp4v2::impl::MP4Atom*, char const*) (mp4atom.cpp:78)
+==57947==    by 0x4EDFF89: mp4v2::impl::MP4Atom::ReadAtom(mp4v2::impl::MP4File&, mp4v2::impl::MP4Atom*) (mp4atom.cpp:168)
+==57947==    by 0x4EE0EA5: mp4v2::impl::MP4Atom::ReadChildAtoms() (mp4atom.cpp:429)
+==57947==    by 0x4EE0360: mp4v2::impl::MP4Atom::Read() (mp4atom.cpp:235)
+==57947==    by 0x4EE8D3D: mp4v2::impl::MP4File::ReadFromFile() (mp4file.cpp:430)
+==57947==    by 0x4EE7851: mp4v2::impl::MP4File::Modify(char const*) (mp4file.cpp:166)
+==57947==    by 0x4ED333A: MP4Modify (mp4.cpp:231)
+==57947==    by 0x406547: mp4v2::util::ArtUtility::actionAdd(mp4v2::util::Utility::JobContext&) (mp4art.cpp:149)
+==57947==    by 0x407B13: mp4v2::util::ArtUtility::utility_job(mp4v2::util::Utility::JobContext&) (mp4art.cpp:369)
+==57947== 
+==57947== Invalid read of size 4
+==57947==    at 0x4EADD6D: mp4v2::impl::MP4Array::ValidIndex(unsigned int) (mp4array.h:40)
+==57947==    by 0x4EB9A72: mp4v2::impl::MP4StringArray::operator[](unsigned int) (in /usr/local/lib/libmp4v2.so.2.1.0)
+==57947==    by 0x4EFEE7F: mp4v2::impl::MP4StringProperty::~MP4StringProperty() (mp4property.cpp:338)
+==57947==    by 0x4EFEF11: mp4v2::impl::MP4StringProperty::~MP4StringProperty() (mp4property.cpp:340)
+==57947==    by 0x4EDF89F: mp4v2::impl::MP4Atom::~MP4Atom() (mp4atom.cpp:66)
+==57947==    by 0x4EB53F1: mp4v2::impl::MP4FtypAtom::~MP4FtypAtom() (in /usr/local/lib/libmp4v2.so.2.1.0)
+==57947==    by 0x4EB5421: mp4v2::impl::MP4FtypAtom::~MP4FtypAtom() (atoms.h:325)
+==57947==    by 0x4EE01B7: mp4v2::impl::MP4Atom::ReadAtom(mp4v2::impl::MP4File&, mp4v2::impl::MP4Atom*) (mp4atom.cpp:199)
+==57947==    by 0x4EE0EA5: mp4v2::impl::MP4Atom::ReadChildAtoms() (mp4atom.cpp:429)
+==57947==    by 0x4EE0360: mp4v2::impl::MP4Atom::Read() (mp4atom.cpp:235)
+==57947==    by 0x4EE8D3D: mp4v2::impl::MP4File::ReadFromFile() (mp4file.cpp:430)
+==57947==    by 0x4EE7851: mp4v2::impl::MP4File::Modify(char const*) (mp4file.cpp:166)
+==57947==  Address 0x5e7df98 is 40 bytes inside a block of size 56 free'd
+==57947==    at 0x4C2EDEB: free (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==57947==    by 0x4EDE973: MP4Free (mp4.cpp:4392)
+==57947==    by 0x4EFEE8A: mp4v2::impl::MP4StringProperty::~MP4StringProperty() (mp4property.cpp:338)
+==57947==    by 0x4EFEF11: mp4v2::impl::MP4StringProperty::~MP4StringProperty() (mp4property.cpp:340)
+==57947==    by 0x4EDF89F: mp4v2::impl::MP4Atom::~MP4Atom() (mp4atom.cpp:66)
+==57947==    by 0x4EB53F1: mp4v2::impl::MP4FtypAtom::~MP4FtypAtom() (in /usr/local/lib/libmp4v2.so.2.1.0)
+==57947==    by 0x4EB5421: mp4v2::impl::MP4FtypAtom::~MP4FtypAtom() (atoms.h:325)
+==57947==    by 0x4EE01B7: mp4v2::impl::MP4Atom::ReadAtom(mp4v2::impl::MP4File&, mp4v2::impl::MP4Atom*) (mp4atom.cpp:199)
+==57947==    by 0x4EE0EA5: mp4v2::impl::MP4Atom::ReadChildAtoms() (mp4atom.cpp:429)
+==57947==    by 0x4EE0360: mp4v2::impl::MP4Atom::Read() (mp4atom.cpp:235)
+==57947==    by 0x4EE8D3D: mp4v2::impl::MP4File::ReadFromFile() (mp4file.cpp:430)
+==57947==    by 0x4EE7851: mp4v2::impl::MP4File::Modify(char const*) (mp4file.cpp:166)
+==57947==  Block was alloc'd at
+==57947==    at 0x4C2E0EF: operator new(unsigned long) (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==57947==    by 0x4EB5147: mp4v2::impl::MP4FtypAtom::MP4FtypAtom(mp4v2::impl::MP4File&) (atom_ftyp.cpp:32)
+==57947==    by 0x4EE2DBC: mp4v2::impl::MP4Atom::factory(mp4v2::impl::MP4File&, mp4v2::impl::MP4Atom*, char const*) (mp4atom.cpp:868)
+==57947==    by 0x4EDFA3A: mp4v2::impl::MP4Atom::CreateAtom(mp4v2::impl::MP4File&, mp4v2::impl::MP4Atom*, char const*) (mp4atom.cpp:78)
+==57947==    by 0x4EDFF89: mp4v2::impl::MP4Atom::ReadAtom(mp4v2::impl::MP4File&, mp4v2::impl::MP4Atom*) (mp4atom.cpp:168)
+==57947==    by 0x4EE0EA5: mp4v2::impl::MP4Atom::ReadChildAtoms() (mp4atom.cpp:429)
+==57947==    by 0x4EE0360: mp4v2::impl::MP4Atom::Read() (mp4atom.cpp:235)
+==57947==    by 0x4EE8D3D: mp4v2::impl::MP4File::ReadFromFile() (mp4file.cpp:430)
+==57947==    by 0x4EE7851: mp4v2::impl::MP4File::Modify(char const*) (mp4file.cpp:166)
+==57947==    by 0x4ED333A: MP4Modify (mp4.cpp:231)
+==57947==    by 0x406547: mp4v2::util::ArtUtility::actionAdd(mp4v2::util::Utility::JobContext&) (mp4art.cpp:149)
+==57947==    by 0x407B13: mp4v2::util::ArtUtility::utility_job(mp4v2::util::Utility::JobContext&) (mp4art.cpp:369)
+==57947== 
+==57947== Invalid read of size 8
+==57947==    at 0x4EB9A7E: mp4v2::impl::MP4StringArray::operator[](unsigned int) (in /usr/local/lib/libmp4v2.so.2.1.0)
+==57947==    by 0x4EFEE7F: mp4v2::impl::MP4StringProperty::~MP4StringProperty() (mp4property.cpp:338)
+==57947==    by 0x4EFEF11: mp4v2::impl::MP4StringProperty::~MP4StringProperty() (mp4property.cpp:340)
+==57947==    by 0x4EDF89F: mp4v2::impl::MP4Atom::~MP4Atom() (mp4atom.cpp:66)
+==57947==    by 0x4EB53F1: mp4v2::impl::MP4FtypAtom::~MP4FtypAtom() (in /usr/local/lib/libmp4v2.so.2.1.0)
+==57947==    by 0x4EB5421: mp4v2::impl::MP4FtypAtom::~MP4FtypAtom() (atoms.h:325)
+==57947==    by 0x4EE01B7: mp4v2::impl::MP4Atom::ReadAtom(mp4v2::impl::MP4File&, mp4v2::impl::MP4Atom*) (mp4atom.cpp:199)
+==57947==    by 0x4EE0EA5: mp4v2::impl::MP4Atom::ReadChildAtoms() (mp4atom.cpp:429)
+==57947==    by 0x4EE0360: mp4v2::impl::MP4Atom::Read() (mp4atom.cpp:235)
+==57947==    by 0x4EE8D3D: mp4v2::impl::MP4File::ReadFromFile() (mp4file.cpp:430)
+==57947==    by 0x4EE7851: mp4v2::impl::MP4File::Modify(char const*) (mp4file.cpp:166)
+==57947==    by 0x4ED333A: MP4Modify (mp4.cpp:231)
+==57947==  Address 0x5e7dfa0 is 48 bytes inside a block of size 56 free'd
+==57947==    at 0x4C2EDEB: free (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==57947==    by 0x4EDE973: MP4Free (mp4.cpp:4392)
+==57947==    by 0x4EFEE8A: mp4v2::impl::MP4StringProperty::~MP4StringProperty() (mp4property.cpp:338)
+==57947==    by 0x4EFEF11: mp4v2::impl::MP4StringProperty::~MP4StringProperty() (mp4property.cpp:340)
+==57947==    by 0x4EDF89F: mp4v2::impl::MP4Atom::~MP4Atom() (mp4atom.cpp:66)
+==57947==    by 0x4EB53F1: mp4v2::impl::MP4FtypAtom::~MP4FtypAtom() (in /usr/local/lib/libmp4v2.so.2.1.0)
+==57947==    by 0x4EB5421: mp4v2::impl::MP4FtypAtom::~MP4FtypAtom() (atoms.h:325)
+==57947==    by 0x4EE01B7: mp4v2::impl::MP4Atom::ReadAtom(mp4v2::impl::MP4File&, mp4v2::impl::MP4Atom*) (mp4atom.cpp:199)
+==57947==    by 0x4EE0EA5: mp4v2::impl::MP4Atom::ReadChildAtoms() (mp4atom.cpp:429)
+==57947==    by 0x4EE0360: mp4v2::impl::MP4Atom::Read() (mp4atom.cpp:235)
+==57947==    by 0x4EE8D3D: mp4v2::impl::MP4File::ReadFromFile() (mp4file.cpp:430)
+==57947==    by 0x4EE7851: mp4v2::impl::MP4File::Modify(char const*) (mp4file.cpp:166)
+==57947==  Block was alloc'd at
+==57947==    at 0x4C2E0EF: operator new(unsigned long) (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==57947==    by 0x4EB5147: mp4v2::impl::MP4FtypAtom::MP4FtypAtom(mp4v2::impl::MP4File&) (atom_ftyp.cpp:32)
+==57947==    by 0x4EE2DBC: mp4v2::impl::MP4Atom::factory(mp4v2::impl::MP4File&, mp4v2::impl::MP4Atom*, char const*) (mp4atom.cpp:868)
+==57947==    by 0x4EDFA3A: mp4v2::impl::MP4Atom::CreateAtom(mp4v2::impl::MP4File&, mp4v2::impl::MP4Atom*, char const*) (mp4atom.cpp:78)
+==57947==    by 0x4EDFF89: mp4v2::impl::MP4Atom::ReadAtom(mp4v2::impl::MP4File&, mp4v2::impl::MP4Atom*) (mp4atom.cpp:168)
+==57947==    by 0x4EE0EA5: mp4v2::impl::MP4Atom::ReadChildAtoms() (mp4atom.cpp:429)
+==57947==    by 0x4EE0360: mp4v2::impl::MP4Atom::Read() (mp4atom.cpp:235)
+==57947==    by 0x4EE8D3D: mp4v2::impl::MP4File::ReadFromFile() (mp4file.cpp:430)
+==57947==    by 0x4EE7851: mp4v2::impl::MP4File::Modify(char const*) (mp4file.cpp:166)
+==57947==    by 0x4ED333A: MP4Modify (mp4.cpp:231)
+==57947==    by 0x406547: mp4v2::util::ArtUtility::actionAdd(mp4v2::util::Utility::JobContext&) (mp4art.cpp:149)
+==57947==    by 0x407B13: mp4v2::util::ArtUtility::utility_job(mp4v2::util::Utility::JobContext&) (mp4art.cpp:369)
+==57947== 
+==57947== Conditional jump or move depends on uninitialised value(s)
+==57947==    at 0x4EDE966: MP4Free (mp4.cpp:4391)
+==57947==    by 0x4EFEE8A: mp4v2::impl::MP4StringProperty::~MP4StringProperty() (mp4property.cpp:338)
+==57947==    by 0x4EFEF11: mp4v2::impl::MP4StringProperty::~MP4StringProperty() (mp4property.cpp:340)
+==57947==    by 0x4EDF89F: mp4v2::impl::MP4Atom::~MP4Atom() (mp4atom.cpp:66)
+==57947==    by 0x4EB53F1: mp4v2::impl::MP4FtypAtom::~MP4FtypAtom() (in /usr/local/lib/libmp4v2.so.2.1.0)
+==57947==    by 0x4EB5421: mp4v2::impl::MP4FtypAtom::~MP4FtypAtom() (atoms.h:325)
+==57947==    by 0x4EE01B7: mp4v2::impl::MP4Atom::ReadAtom(mp4v2::impl::MP4File&, mp4v2::impl::MP4Atom*) (mp4atom.cpp:199)
+==57947==    by 0x4EE0EA5: mp4v2::impl::MP4Atom::ReadChildAtoms() (mp4atom.cpp:429)
+==57947==    by 0x4EE0360: mp4v2::impl::MP4Atom::Read() (mp4atom.cpp:235)
+==57947==    by 0x4EE8D3D: mp4v2::impl::MP4File::ReadFromFile() (mp4file.cpp:430)
+==57947==    by 0x4EE7851: mp4v2::impl::MP4File::Modify(char const*) (mp4file.cpp:166)
+==57947==    by 0x4ED333A: MP4Modify (mp4.cpp:231)
+==57947== 
+==57947== 
+==57947== Process terminating with default action of signal 11 (SIGSEGV): dumping core
+==57947==  Access not within mapped region at address 0x6234000
+==57947==    at 0x4EFEE80: mp4v2::impl::MP4StringProperty::~MP4StringProperty() (mp4property.cpp:338)
+==57947==    by 0x4EFEF11: mp4v2::impl::MP4StringProperty::~MP4StringProperty() (mp4property.cpp:340)
+==57947==    by 0x4EDF89F: mp4v2::impl::MP4Atom::~MP4Atom() (mp4atom.cpp:66)
+==57947==    by 0x4EB53F1: mp4v2::impl::MP4FtypAtom::~MP4FtypAtom() (in /usr/local/lib/libmp4v2.so.2.1.0)
+==57947==    by 0x4EB5421: mp4v2::impl::MP4FtypAtom::~MP4FtypAtom() (atoms.h:325)
+==57947==    by 0x4EE01B7: mp4v2::impl::MP4Atom::ReadAtom(mp4v2::impl::MP4File&, mp4v2::impl::MP4Atom*) (mp4atom.cpp:199)
+==57947==    by 0x4EE0EA5: mp4v2::impl::MP4Atom::ReadChildAtoms() (mp4atom.cpp:429)
+==57947==    by 0x4EE0360: mp4v2::impl::MP4Atom::Read() (mp4atom.cpp:235)
+==57947==    by 0x4EE8D3D: mp4v2::impl::MP4File::ReadFromFile() (mp4file.cpp:430)
+==57947==    by 0x4EE7851: mp4v2::impl::MP4File::Modify(char const*) (mp4file.cpp:166)
+==57947==    by 0x4ED333A: MP4Modify (mp4.cpp:231)
+==57947==    by 0x406547: mp4v2::util::ArtUtility::actionAdd(mp4v2::util::Utility::JobContext&) (mp4art.cpp:149)
+```
