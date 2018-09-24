@@ -4,7 +4,7 @@ Vendor: https://tcpreplay.appneta.com/
 
 ## Heap overflow in get_next_packet()
 
-tcpreplay contains a heap-based buffer over-read vulnerability. The `get_next_packet()` function in the `send_packets.c` file uses the `memcpy()` macro to copy sequences from the source buffer `pktdata` to the destination `(*prev_packet)->pktdata`. However, there are no checks in place to ensure that `dst` is a non-zero value. An attacker can exploit this vulnerability by submitting a malicious file that exploits this issue. This will result in a Denial of Service (DoS) and potentially Information Exposure when the application attempts to process the file.
+tcpreplay contains a heap-based buffer overflow vulnerability. The `get_next_packet()` function in the `send_packets.c` file uses the `memcpy()` function to copy sequences from the source buffer `pktdata` to the destination `(*prev_packet)->pktdata`. However, there are no checks in place to ensure that `dst` is a non-zero value. An attacker can exploit this vulnerability by submitting a malicious file that exploits this issue. This will result in a Denial of Service (DoS) and potentially Information Exposure when the application attempts to process the file.
 
 ###### **Affected version:**
   4.3 branch
