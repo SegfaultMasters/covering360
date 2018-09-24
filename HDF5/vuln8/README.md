@@ -68,3 +68,54 @@ Shadow byte legend (one shadow byte represents 8 application bytes):
 ```
 =============================================================
 
+## Invalid write memory access in decompress.c
+
+A flaw discovered in ReadCode() in decompress.c in HDF5 through 1.10.3 allows attackers to cause a denial of service via a crafted HDF5 file. This issue was triggered while converting GIF file to HDF file. 
+
+#### Affected version - 1.10.3 and 1.8.20 (compiled from source)
+
+##### Command: ./gif2h5 $POC ~/output/ex_image2.h5 
+
+#### Debugging:
+```
+Source of 1.8.20
+
+	
+     84	     ByteOffset = BitOffset / 8;
+		// RawCode=0x0, ByteOffset=0x37e9
+ →   85	     RawCode = Raster[ByteOffset] + (0x100 * Raster[ByteOffset + 1]);
+     86	 
+     87	     if (CodeSize >= 8)
+     88	         RawCode += (0x10000 * Raster[ByteOffset + 2]);
+     89	 
+     90	     RawCode >>= (BitOffset % 8);
+
+Backtrace of 1.8.20:
+
+#0  0x000055555555a04e in ReadCode () at decompress.c:85
+#1  0x000055555555a6e4 in Decompress (GifImageDesc=0x5555557c4090, GifHead=0x5555557c3d20) at decompress.c:309
+#2  0x0000555555559969 in Gif2Mem (MemGif=0x5555557c3d17 ";1\003", GifMemoryStruct=0x7fffffffdd10) at gif2mem.c:184
+#3  0x0000555555559386 in main (argv=0x3, argc=0x7fffffffe178) at gif2hdf.c:100
+
+```
+
+## ASAN Report
+
+```
+./gif2h5 ~/output_gif2h5/crashes/POC011 ~/output/ex_image2.h5 
+ASAN:DEADLYSIGNAL
+=================================================================
+==2954==ERROR: AddressSanitizer: SEGV on unknown address 0x56405fe8e000 (pc 0x56405fc3172a bp 0x7ffc7e937070 sp 0x7ffc7e937050 T0)
+==2954==The signal is caused by a WRITE memory access.
+    #0 0x56405fc31729 in Decompress /home/ethan/hdf5-develop/hl/tools/gif2h5/decompress.c:290
+    #1 0x56405fc2fded in Gif2Mem /home/ethan/hdf5-develop/hl/tools/gif2h5/gif2mem.c:184
+    #2 0x56405fc2eda1 in main /home/ethan/hdf5-develop/hl/tools/gif2h5/gif2hdf.c:100
+    #3 0x7f7124c571c0 in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x211c0)
+    #4 0x56405fc2e7b9 in _start (/home/ethan/hdf5-develop/hdf5/bin/gif2h5+0x127b9)
+
+AddressSanitizer can not provide additional info.
+SUMMARY: AddressSanitizer: SEGV /home/ethan/hdf5-develop/hl/tools/gif2h5/decompress.c:290 in Decompress
+==2954==ABORTING
+
+```
+
