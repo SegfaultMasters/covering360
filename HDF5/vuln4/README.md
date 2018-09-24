@@ -11,12 +11,21 @@ We believe that vulnerability has been introduced in the commit "0b4b87e36ff3ee8
 #### Affected version - 1.10.x and 1.8.x and before (compiled from source)
 #### Tested versions - 1.8.20 & 1.10.3
 
-
 ##### Command: ./h5repack -f GZIP=8 -l dset1:CHUNK=5x6 $POC ~/output/test11.h5
 
 ###### Debugging
 
 ```
+Source: 
+
+    335	             for (i = rank; i > 0; --i) {
+ →  336	                 hsize_t size = H5TOOLS_BUFSIZE / sm_nbytes;
+    337	                 if (size == 0) /* datum size > H5TOOLS_BUFSIZE */
+    338	                     size = 1;
+    339	                 sm_size[i - 1] = MIN(dims[i - 1], size);
+    340	                 sm_nbytes *= sm_size[i - 1];
+    341	                 HDassert(sm_nbytes > 0);
+
 gef➤ x/i $pc
 => 0x55555556393c <apply_filters+1129>:	div    QWORD PTR [rbp-0xbd0]
 
@@ -58,6 +67,73 @@ gef➤ x/d $rbp-0xbd0
 #2  0x000055555555e52e in copy_objects (fnamein=0x7fffffffe4a9 "/home/ethan/hdf5-repack/POC_024", fnameout=0x7fffffffe4d1 "/home/ethan/output/test11.h5", options=0x7fffffffdc80) at h5repack_copy.c:299
 #3  0x000055555555a46a in h5repack (infile=0x7fffffffe4a9 "/home/ethan/hdf5-repack/POC_024", outfile=0x7fffffffe4d1 "/home/ethan/output/test11.h5", options=0x7fffffffdc80) at h5repack.c:54
 #4  0x000055555556f32d in main (argc=0x7, argv=0x7fffffffe138) at h5repack_main.c:660
+
+```
+==========================================================================================================================
+
+## Divided By Zero - POC_H5D__select_io_H5Dselect
+
+A SIGFPE signal is raised in the function H5D__select_io() of H5Dselect.c in the 'hdf5' package 1.10.x and 1.8.x versions during an attempted parse of a crafted HDF file, because of incorrect protection against division by zero. It could allow a remote denial of service attack.
+
+#### Affected version - 1.10.x and 1.8.x and before (compiled from source)
+#### Tested versions - 1.8.20 & 1.10.3
+
+
+##### Command: ./h52gif  $POC ~/output_h5gif/image1.gif -i image
+
+###### Debugging
+
+```
+Source: 
+
+	228	             /* Decrement number of elements left to process */
+ →  229	             HDassert(((size_t)tmp_file_len % elmt_size) == 0);
+    230	             nelmts -= ((size_t)tmp_file_len / elmt_size);
+    231	         } /* end while */
+
+gef➤  x/i $pc
+=> 0x7ffff5937361 <H5D__select_io+8766>:	div    QWORD PTR [rbp-0x260]
+
+gef➤  i r
+rax            0x0	0x0
+rbx            0x7fffffffcbf0	0x7fffffffcbf0
+rcx            0x1	0x1
+rdx            0x0	0x0
+rsi            0x6180000008b8	0x6180000008b8
+rdi            0x617000000080	0x617000000080
+rbp            0x7fffffffcc10	0x7fffffffcc10
+rsp            0x7fffffffc990	0x7fffffffc990
+r8             0xc307fff8118	0xc307fff8118
+r9             0xc307fff8177	0xc307fff8177
+r10            0x7fffffffbdf0	0x7fffffffbdf0
+r11            0x0	0x0
+r12            0xffffffff942	0xffffffff942
+r13            0x7fffffffca10	0x7fffffffca10
+r14            0x7fffffffca10	0x7fffffffca10
+r15            0x7fffffffcd20	0x7fffffffcd20
+rip            0x7ffff5937361	0x7ffff5937361 <H5D__select_io+8766>
+eflags         0x10246	[ PF ZF IF RF ]
+cs             0x33	0x33
+ss             0x2b	0x2b
+ds             0x0	0x0
+es             0x0	0x0
+fs             0x0	0x0
+gs             0x0	0x0
+
+gef➤  x/d $rbp-0x260
+0x7fffffffc9b0:	0
+
+```
+###### Backtrace
+
+```
+#0  0x00007ffff5937361 in H5D__select_io (io_info=0x7fffffffcf60, elmt_size=0x0, nelmts=0x300, file_space=0x614000001270, mem_space=0x614000001270) at H5Dselect.c:229
+#1  0x00007ffff5937e7d in H5D__select_read (io_info=0x7fffffffcf60, type_info=0x7fffffffcec0, nelmts=0x300, file_space=0x614000001270, mem_space=0x614000001270) at H5Dselect.c:281
+#2  0x00007ffff5895878 in H5D__contig_read (io_info=0x7fffffffcf60, type_info=0x7fffffffcec0, nelmts=0x300, file_space=0x614000001270, mem_space=0x614000001270, fm=0x61e0000000b0) at H5Dcontig.c:595
+#3  0x00007ffff591138c in H5D__read (dataset=0x60b00001e3c0, mem_type_id=0x300000000000148, mem_space=0x614000001270, file_space=0x614000001270, buf=0x617000000080) at H5Dio.c:600
+#4  0x00007ffff590bfd0 in H5Dread (dset_id=0x500000000000005, mem_type_id=0x300000000000148, mem_space_id=0x0, file_space_id=0x0, dxpl_id=0xa00000000000008, buf=0x617000000080) at H5Dio.c:198
+#5  0x00007ffff6be8bc5 in H5IMget_palette (loc_id=0x100000000000000, image_name=0x602000000010 "image", pal_number=0x0, pal_data=0x617000000080 '\276' <repeats 768 times>) at H5IM.c:1075
+#6  0x0000555555566c54 in main (argc=0x5, argv=0x7fffffffe148) at hdf2gif.c:179
 
 ```
 =============================================================
