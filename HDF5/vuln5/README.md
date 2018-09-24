@@ -140,3 +140,88 @@ valgrind --leak-check=full ./h52gif ~/output_h5gif/crashes/POC_H5O_dtype_decode_
 ==2222== ERROR SUMMARY: 8 errors from 4 contexts (suppressed: 0 from 0)
 
 ```
+
+===============================================================================
+
+## Stack overflow in H5S_extent_get_dims
+
+An issue was discovered in the HDF HDF5 1.10.3 library. There is a stack-based buffer overflow in the function H5S_extent_get_dims() in H5S.c. Specifically, this issue occur while converting an HDF5 file to a GIF file. 
+
+#### Affected version - 1.10.3 and before (compiled from source)
+
+### Command: ./h52gif  $POC ~/output_h5gif/image1.gif -i image
+
+
+```
+ Source: 
+
+  1054	             ret_value = (int)ext->rank;
+   1055	             for(i = 0; i < ret_value; i++) {
+   1056	                 if(dims)
+		// ext=0x00007fffffffd3e8  →  [...]  →  0x0000000000000000, dims=0x00007fffffffd3e0  →  [...]  →  0x00000000000000c8, i=0x12
+ → 1057	                     dims[i] = ext->size[i];
+   1058	                 if(max_dims) {
+   1059	                     if(ext->max)
+   1060	                         max_dims[i] = ext->max[i];
+```
+
+### ASAN Report
+
+```
+
+./h52gif  ~/output_h5gif/crashes/POC005 ~/output_h5gif/image1.gif -i image
+=================================================================
+==2267==ERROR: AddressSanitizer: stack-buffer-overflow on address 0x7fffa796ba38 at pc 0x7febcd0e4a2d bp 0x7fffa796b820 sp 0x7fffa796b810
+WRITE of size 8 at 0x7fffa796ba38 thread T0
+    #0 0x7febcd0e4a2c in H5S_extent_get_dims /home/ethan/hdf5-develop/src/H5S.c:1057
+    #1 0x7febcd0e4f39 in H5S_get_simple_extent_dims /home/ethan/hdf5-develop/src/H5S.c:1106
+    #2 0x7febcd0e44cc in H5Sget_simple_extent_dims /home/ethan/hdf5-develop/src/H5S.c:1015
+    #3 0x7febcdc95467 in H5IMget_image_info /home/ethan/hdf5-develop/hl/src/H5IM.c:304
+    #4 0x55b76d7fd979 in main /home/ethan/hdf5-develop/hl/tools/gif2h5/hdf2gif.c:153
+    #5 0x7febcbfc91c0 in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x211c0)
+    #6 0x55b76d7fd159 in _start (/home/ethan/hdf5-develop/hdf5/bin/h52gif+0x12159)
+
+Address 0x7fffa796ba38 is located in stack of thread T0 at offset 56 in frame
+    #0 0x7febcdc951db in H5IMget_image_info /home/ethan/hdf5-develop/hl/src/H5IM.c:252
+
+  This frame has 1 object(s):
+    [32, 56) 'dims' <== Memory access at offset 56 overflows this variable
+HINT: this may be a false positive if your program uses some custom stack unwind mechanism or swapcontext
+      (longjmp and C++ exceptions *are* supported)
+SUMMARY: AddressSanitizer: stack-buffer-overflow /home/ethan/hdf5-develop/src/H5S.c:1057 in H5S_extent_get_dims
+Shadow bytes around the buggy address:
+  0x100074f256f0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x100074f25700: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x100074f25710: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f1 f1
+  0x100074f25720: f1 f1 00 f2 f2 f2 00 00 00 00 00 00 00 00 00 00
+  0x100074f25730: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+=>0x100074f25740: f1 f1 f1 f1 00 00 00[f2]00 00 00 00 00 00 00 00
+  0x100074f25750: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x100074f25760: 00 00 00 00 f1 f1 f1 f1 04 f2 f2 f2 f2 f2 f2 f2
+  0x100074f25770: 00 f2 f2 f2 f2 f2 f2 f2 00 f2 f2 f2 f2 f2 f2 f2
+  0x100074f25780: 00 f2 f2 f2 f2 f2 f2 f2 00 f2 f2 f2 f2 f2 f2 f2
+  0x100074f25790: 00 f2 f2 f2 f2 f2 f2 f2 00 f2 f2 f2 f2 f2 f2 f2
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07 
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+==2267==ABORTING
+
+```
+
+===================================================================================================================
