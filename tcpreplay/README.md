@@ -2,7 +2,7 @@
 Tcpreplay is a suite of free Open Source utilities for editing and replaying previously captured network traffic           
 Vendor: https://tcpreplay.appneta.com/
 
-## Buffer overflow in get_next_packet()
+## Heap overflow in get_next_packet()
 
 A `memcpy()` in function `get_next_packet()` causes a buffer overflow due to source `pktdata` & destination `(*prev_packet)->pktdata` overlap in `send_packets.c`. 
 
