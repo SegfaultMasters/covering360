@@ -347,3 +347,154 @@ Aborted
 
 [Reproducer](https://github.com/SegfaultMasters/covering360/blob/master/tcpreplay/fast_edit_package_02)
 
+
+
+
+
+
+
+
+## Heap overflow in dlt_en10mb_encode() 
+
+
+An heap overflow was triggered in function `dlt_en10mb_encode()` at file `en10mb.c`, due to inappropriate values in  memmove(). The length (pktlen + ctx -> l2len) is larger than source value (packet + ctx->l2len), therefore the `memmove()` could copy bytes behind the allocated data buffer, into the destination buffer causing a segmentation fault.
+
+
+### **Debugging:**
+
+
+```
+-----------------------------------------------------------------------------------------------------------------------------------------------[ code:i386 ]----
+    0x8079355 <dlt_en10mb_encode+1548> mov    eax, DWORD PTR [eax+0x28]
+    0x8079358 <dlt_en10mb_encode+1551> cmp    eax, DWORD PTR [ebp-0x44]
+    0x807935b <dlt_en10mb_encode+1554> je     0x807938f <dlt_en10mb_encode+1606>
+-> 0x807935d <dlt_en10mb_encode+1556> mov    eax, DWORD PTR [ebp+0x8]
+    0x8079360 <dlt_en10mb_encode+1559> mov    eax, DWORD PTR [eax+0x28]
+    0x8079363 <dlt_en10mb_encode+1562> mov    edx, DWORD PTR [ebp+0x10]
+    0x8079366 <dlt_en10mb_encode+1565> sub    edx, eax
+    0x8079368 <dlt_en10mb_encode+1567> mov    eax, edx
+    0x807936a <dlt_en10mb_encode+1569> mov    ebx, eax
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+-------[ source:./plugins/dlt_en10mb/en10mb.c+488 ]----
+    483          return TCPEDIT_ERROR;
+    484      }
+    485
+    486      /* Make space for our new L2 header */
+    487      if (newl2len != ctx->l2len)
+                // ctx=0xbfffe6c0 -> [...] -> 0x00000001, packet=0xbfffe6c4 -> [...] -> 0xbfb32500, pktlen=0xbeL, newl2len=0x12L
+-> 488           memmove(packet + newl2len, packet + ctx->l2len, pktlen - ctx->l2len);    // Buffer overflow
+    489
+    490      /* update the total packet length */
+    491      pktlen += newl2len - ctx->l2len;
+    492
+    493      /* always set the src & dst address as the first 12 bytes */
+
+-------[ source:./plugins/dlt_en10mb/en10mb.c+488 ]----
+```
+
+
+```	
+	
+[#0] 0x807935d->Name: dlt_en10mb_encode(ctx=0xb4c01910, packet=0xb6001640 "", pktlen=0xbe, dir=TCPR_DIR_C2S)
+[#1] 0x8075218->Name: tcpedit_dlt_encode(ctx=0xb4c01910, packet=0xb6001640 "", pktlen=0xbe, direction=TCPR_DIR_C2S)
+[#2] 0x8074857->Name: tcpedit_dlt_process(ctx=0xb4c01910, packet=0xbfffe940, pktlen=0xbe, direction=TCPR_DIR_C2S)
+[#3] 0x80655dd->Name: tcpedit_packet(tcpedit=0xb6402880, pkthdr=0xbfffe9c0, pktdata=0xbfffe940, direction=TCPR_DIR_C2S)
+[#4] 0x805158b->Name: send_packets(ctx=0xb6403280, pcap=0xb4203000, idx=0x0)
+[#5] 0x8063194->Name: replay_file(ctx=0xb6403280, idx=0x0)
+[#6] 0x8061fb1->Name: tcpr_replay_index(ctx=0xb6403280)
+[#7] 0x8060e81->Name: tcpreplay_replay(ctx=0xb6403280)
+[#8] 0x80586eb->Name: main(argc=0x1, argv=0xbffff4d8)
+
+```
+
+
+```
+//tcpedit.c:133
+gef> p/d pktlen - ctx->l2len
+$61 = 176
+gef> p/d ctx->l2len
+$62 = 14
+gef> p/d newl2len
+$63 = 18
+gef> x packet
+0xb6001640:     0
+
+//tcpedit.c+133
+gef> ptype pkthdr->caplen
+type = unsigned int
+gef> p/d pkthdr->caplen
+$21 = 190
+
+```
+
+
+###  **ASAN output**
+
+
+
+```	
+	=================================================================
+==5237==ERROR: AddressSanitizer: heap-buffer-overflow on address 0xb600167e at pc 0xb7adbfc8 bp 0xbfffe628 sp 0xbfffe1fc
+READ of size 76 at 0xb600167e thread T0
+    #0 0xb7adbfc7 in __asan_memmove (/usr/lib/i386-linux-gnu/libasan.so.2+0x8afc7)
+    #1 0xb7adc3df in __interceptor_memmove (/usr/lib/i386-linux-gnu/libasan.so.2+0x8b3df)
+    #2 0x807938b in dlt_en10mb_encode plugins/dlt_en10mb/en10mb.c:488
+    #3 0x8075217 in tcpedit_dlt_encode plugins/dlt_plugins.c:402
+    #4 0x8074856 in tcpedit_dlt_process plugins/dlt_plugins.c:245
+    #5 0x80655dc in tcpedit_packet /home/loginsoft/ACE/tcpreplay/src/tcpedit/tcpedit.c:133
+    #6 0x805158a in send_packets /home/loginsoft/ACE/tcpreplay/src/send_packets.c:554
+    #7 0x8063193 in replay_file /home/loginsoft/ACE/tcpreplay/src/replay.c:188
+    #8 0x8061fb0 in tcpr_replay_index /home/loginsoft/ACE/tcpreplay/src/replay.c:61
+    #9 0x8060e80 in tcpreplay_replay /home/loginsoft/ACE/tcpreplay/src/tcpreplay_api.c:1135
+    #10 0x80586ea in main /home/loginsoft/ACE/tcpreplay/src/tcpreplay.c:139
+    #11 0xb784c636 in __libc_start_main (/lib/i386-linux-gnu/libc.so.6+0x18636)
+    #12 0x804a985  (/usr/local/bin/tcpreplay-edit+0x804a985)
+
+0xb600167e is located 0 bytes to the right of 62-byte region [0xb6001640,0xb600167e)
+allocated by thread T0 here:
+    #0 0xb7ae7dee in malloc (/usr/lib/i386-linux-gnu/libasan.so.2+0x96dee)
+    #1 0x808c354 in _our_safe_malloc /home/loginsoft/ACE/tcpreplay/src/common/utils.c:50
+    #2 0x805515d in get_next_packet /home/loginsoft/ACE/tcpreplay/src/send_packets.c:1044
+    #3 0x80506d1 in preload_pcap_file /home/loginsoft/ACE/tcpreplay/src/send_packets.c:445
+    #4 0x8058626 in main /home/loginsoft/ACE/tcpreplay/src/tcpreplay.c:126
+    #5 0xb784c636 in __libc_start_main (/lib/i386-linux-gnu/libc.so.6+0x18636)
+
+SUMMARY: AddressSanitizer: heap-buffer-overflow ??:0 __asan_memmove
+Shadow bytes around the buggy address:
+  0x36c00270: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x36c00280: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x36c00290: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x36c002a0: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x36c002b0: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+=>0x36c002c0: fa fa fa fa fa fa fa fa 00 00 00 00 00 00 00[06]
+  0x36c002d0: fa fa fa fa fd fd fd fd fd fd fd fa fa fa fa fa
+  0x36c002e0: 00 00 00 00 00 00 04 fa fa fa fa fa 00 00 00 00
+  0x36c002f0: 00 00 06 fa fa fa fa fa 00 00 00 00 00 00 04 fa
+  0x36c00300: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x36c00310: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07
+  Heap left redzone:       fa
+  Heap right redzone:      fb
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack partial redzone:   f4
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+==5237==ABORTING
+[Inferior 1 (process 5237) exited with code 01]
+```
+
+[Reproducer](https://github.com/SegfaultMasters/covering360/blob/master/tcpreplay/dlt_en10mb_encode_00)
