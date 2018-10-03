@@ -357,7 +357,7 @@ Aborted
 ## Heap overflow in dlt_en10mb_encode() 
 
 
-An heap overflow was triggered in function `dlt_en10mb_encode()` at file `en10mb.c`, due to inappropriate values in  memmove(). The length (pktlen + ctx -> l2len) is larger than source value (packet + ctx->l2len), therefore the `memmove()` could copy bytes behind the allocated data buffer, into the destination buffer causing a segmentation fault.
+An heap overflow was triggered in function `dlt_en10mb_encode()` at file `en10mb.c`, due to inappropriate values in the function memmove(). The length (pktlen + ctx -> l2len) is larger than source value (packet + ctx->l2len) as the function failed to ensure the length of a packet is valid. This leads to Denial of Service.
 
 
 
