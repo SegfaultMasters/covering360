@@ -360,8 +360,20 @@ Aborted
 An heap overflow was triggered in function `dlt_en10mb_encode()` at file `en10mb.c`, due to inappropriate values in  memmove(). The length (pktlen + ctx -> l2len) is larger than source value (packet + ctx->l2len), therefore the `memmove()` could copy bytes behind the allocated data buffer, into the destination buffer causing a segmentation fault.
 
 
-### **Debugging:**
 
+
+###### **Affected version:**
+  4.3 branch
+
+  
+###### **Command**: 
+ sudo tcpreplay-edit --cachefile=example.cache --intf1=ens33 --intf2=lo --enet-vlan=add --enet-vlan-tag=4095 $POC
+ 
+ 
+ 
+
+
+### **Debugging:**
 
 ```
 -----------------------------------------------------------------------------------------------------------------------------------------------[ code:i386 ]----
