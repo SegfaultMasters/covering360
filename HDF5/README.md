@@ -55,7 +55,7 @@ A SIGFPE signal is raised in the function H5D__chunk_set_info_real() of H5Dchunk
 
 #### Affected version - 1.10.3 (latest release)
 
-#### Command ./h5stat -e -n --xml $POC (H5D__chunk_set_info_real_div_by_zero)
+#### Command ./h5dump -H $POC (H5D__chunk_set_info_real_div_by_zero)
 
 ### Source
 ```
