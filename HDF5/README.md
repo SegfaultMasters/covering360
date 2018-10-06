@@ -65,6 +65,15 @@ A SIGFPE signal is raised in the function H5D__chunk_set_info_real() of H5Dchunk
 ### Debugging
 
 ```
+gef➤  p curr_dims[u]
+$1 = 0x4
+gef➤  p layout->dim[u]
+$2 = 0x0
+gef➤  p ((curr_dims[u] + layout->dim[u]) - 1) / layout->dim[u]
+Division by zero
+```
+
+```
 x/i $pc
 => 0x7ffff700b505 <H5D__chunk_set_info+437>:	div    r14
 
