@@ -2,7 +2,7 @@
 
 HDF5 is a data model, library, and file format for storing and managing data. It supports an unlimited variety of datatypes, and is designed for flexible and efficient I/O and for high volume and complex data. HDF5 is portable and is extensible, allowing applications to evolve in their use of HDF5. The HDF5 Technology suite includes tools and applications for managing, manipulating, viewing, and analyzing data in the HDF5 format. link: https://portal.hdfgroup.org/display/HDF5/HDF5
 
-## Divided By Zero - POC_apply_filters_h5repack_filters
+## Divided By Zero - POC_apply_filters_h5repack_filters (CVE-2018-17434)
 
 A SIGFPE signal is raised in the function apply_filters() of h5repack_filters.c in the 'hdf5' package 1.10.x and 1.8.x versions during an attempted parse of a crafted HDF file, because of incorrect protection against division by zero. It could allow a remote denial of service attack.
 
@@ -71,7 +71,7 @@ gef➤ x/d $rbp-0xbd0
 ```
 ==========================================================================================================================
 
-## Divided By Zero - POC_H5D__select_io_H5Dselect
+## Divided By Zero - POC_H5D__select_io_H5Dselect (CVE-2018-17438)
 
 A SIGFPE signal is raised in the function H5D__select_io() of H5Dselect.c in the 'hdf5' package 1.10.x and 1.8.x versions during an attempted parse of a crafted HDF file, because of incorrect protection against division by zero. It could allow a remote denial of service attack.
 
