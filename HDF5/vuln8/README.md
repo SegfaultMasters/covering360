@@ -2,7 +2,7 @@
 
 HDF5 is a data model, library, and file format for storing and managing data. It supports an unlimited variety of datatypes, and is designed for flexible and efficient I/O and for high volume and complex data. HDF5 is portable and is extensible, allowing applications to evolve in their use of HDF5. The HDF5 Technology suite includes tools and applications for managing, manipulating, viewing, and analyzing data in the HDF5 format. link: https://portal.hdfgroup.org/display/HDF5/HDF5
 
-## Heap Overflow in ReadGifImageDesc
+## Heap Overflow in ReadGifImageDesc (CVE-2018-17433)
 
 A heap-buffer-overflow was discovered in ReadGifImageDesc() in gifread.c in HDF5 through 1.10.3 allows attackers to cause a denial of service via a crafted HDF5 file. This issue was triggered while converting GIF file to HDF file. 
 
@@ -68,7 +68,7 @@ Shadow byte legend (one shadow byte represents 8 application bytes):
 ```
 =============================================================
 
-## Invalid write memory access in decompress.c
+## Invalid write memory access in decompress.c (CVE-2018-17436)
 
 A flaw discovered in ReadCode() in decompress.c in HDF5 through 1.10.3 allows attackers to cause a denial of service via a crafted HDF5 file. This issue was triggered while converting GIF file to HDF file. 
 
