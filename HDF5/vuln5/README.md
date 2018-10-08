@@ -165,6 +165,16 @@ An issue was discovered in the HDF HDF5 1.10.3 library. There is a stack-based b
    1060	                         max_dims[i] = ext->max[i];
 ```
 
+```
+gef➤  p dims[i]
+$101 = 0x60200000a490
+gef➤  x 0x60200000a490
+0x60200000a490:	1734438249
+
+gef➤  x ext->size[i]
+0x100180008:	0
+```
+
 ### ASAN Report
 
 ```
