@@ -143,7 +143,7 @@ valgrind --leak-check=full ./h52gif ~/output_h5gif/crashes/POC_H5O_dtype_decode_
 
 ===============================================================================
 
-## Stack overflow in H5S_extent_get_dims
+## Stack overflow in H5S_extent_get_dims (CVE-2018-17439)
 
 An issue was discovered in the HDF HDF5 1.10.3 library. There is a stack-based buffer overflow in the function H5S_extent_get_dims() in H5S.c. Specifically, this issue occur while converting an HDF5 file to a GIF file. 
 
