@@ -24,11 +24,18 @@ Source:
     239	     } /* end if */
     240	 
 
-gef➤  x/d attr->shared->data
-0x5555557d03e8:	0
+On the first hit, the value is 6
+gef➤  p/d attr->shared->data_size
+$10 = 6
 
-gef➤ p attr->shared->data_size
-$1 = 0x6
+
+On the second hit, the value is 13154500
+gef➤  p/d attr->shared->data_size
+$11 = 13154500
+
+
+gef➤  p/d ds_size
+$47 = 3288625
 
 
 Backtrace
