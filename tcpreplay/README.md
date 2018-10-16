@@ -510,3 +510,215 @@ Shadow byte legend (one shadow byte represents 8 application bytes):
 ```
 
 [Reproducer](https://github.com/SegfaultMasters/covering360/blob/master/tcpreplay/dlt_en10mb_encode_00)
+
+
+
+
+
+## Heap overflow in csum_replace4()
+
+A heap-based buffer overflow was discovered in tcpreplay-edit binary, during the incremental checksum operation. The issue is being triggered in the function `csum_replace4()` at `incremental_checksum.h`, invoked by `ipv4_l34_csum_replace()` in `edit_packet.c`. 
+
+
+### **Tested version:**
+4.3
+
+
+### **Command:**
+tcpreplay-edit --portmap=80:8000 --seed=10  --cachefile=example.cache --intf1=eno1 --intf2=eno3 --decode=some --preload-pcap --verbose $POC
+
+
+### **Debugging:**
+
+
+```
+     95  static inline void csum_replace4(__sum16 *sum, __be32 from, __be32 to)
+     96  {
+                // sum=0xbfffe8f0 -> [...] -> 0xa8c0b0af
+->   97       *sum = csum_fold(csum_add(csum_sub(~csum_unfold(*sum), from), to)); //Buffer overflow
+     98  }
+```
+	 
+
+```
+gef> p (unsigned short *)sum
+$20 = (unsigned short *) 0xb6001742
+gef> x 0xb6001742
+0xb6001742:     391171182
+
+```
+
+### **ASAN Report** 
+
+```
+==7737==ERROR: AddressSanitizer: heap-buffer-overflow on address 0xb6001742 at pc 0x0806a35c bp 0xbff60578 sp 0xbff60568
+READ of size 2 at 0xb6001742 thread T0
+    #0 0x806a35b in csum_replace4 /home/loginsoft/ACE/tcpreplay/src/tcpedit/incremental_checksum.h:97
+    #1 0x806acf1 in ipv4_l34_csum_replace /home/loginsoft/ACE/tcpreplay/src/tcpedit/edit_packet.c:181
+    #2 0x806afdb in ipv4_addr_csum_replace /home/loginsoft/ACE/tcpreplay/src/tcpedit/edit_packet.c:251
+    #3 0x806b633 in randomize_ipv4 /home/loginsoft/ACE/tcpreplay/src/tcpedit/edit_packet.c:343
+    #4 0x806661b in tcpedit_packet /home/loginsoft/ACE/tcpreplay/src/tcpedit/tcpedit.c:272
+    #5 0x805158a in send_packets /home/loginsoft/ACE/tcpreplay/src/send_packets.c:554
+    #6 0x8063193 in replay_file /home/loginsoft/ACE/tcpreplay/src/replay.c:188
+    #7 0x8061fb0 in tcpr_replay_index /home/loginsoft/ACE/tcpreplay/src/replay.c:61
+    #8 0x8060e80 in tcpreplay_replay /home/loginsoft/ACE/tcpreplay/src/tcpreplay_api.c:1135
+    #9 0x80586ea in main /home/loginsoft/ACE/tcpreplay/src/tcpreplay.c:139
+    #10 0xb7831636 in __libc_start_main (/lib/i386-linux-gnu/libc.so.6+0x18636)
+    #11 0x804a985  (/usr/local/bin/tcpreplay-edit+0x804a985)
+
+0xb6001742 is located 4 bytes to the right of 62-byte region [0xb6001700,0xb600173e)
+allocated by thread T0 here:
+    #0 0xb7accdee in malloc (/usr/lib/i386-linux-gnu/libasan.so.2+0x96dee)
+    #1 0x808c354 in _our_safe_malloc /home/loginsoft/ACE/tcpreplay/src/common/utils.c:50
+    #2 0x805515d in get_next_packet /home/loginsoft/ACE/tcpreplay/src/send_packets.c:1044
+    #3 0x80506d1 in preload_pcap_file /home/loginsoft/ACE/tcpreplay/src/send_packets.c:445
+    #4 0x8058626 in main /home/loginsoft/ACE/tcpreplay/src/tcpreplay.c:126
+    #5 0xb7831636 in __libc_start_main (/lib/i386-linux-gnu/libc.so.6+0x18636)
+
+SUMMARY: AddressSanitizer: heap-buffer-overflow /home/loginsoft/ACE/tcpreplay/src/tcpedit/incremental_checksum.h:97 csum_replace4
+Shadow bytes around the buggy address:
+  0x36c00290: 00 00 00 04 fa fa fa fa 00 00 00 00 00 00 00 04
+  0x36c002a0: fa fa fa fa 00 00 00 00 00 00 00 04 fa fa fa fa
+  0x36c002b0: 00 00 00 00 00 00 00 04 fa fa fa fa 00 00 00 00
+  0x36c002c0: 00 00 00 04 fa fa fa fa 00 00 00 00 00 00 00 04
+  0x36c002d0: fa fa fa fa 00 00 00 00 00 00 00 06 fa fa fa fa
+=>0x36c002e0: 00 00 00 00 00 00 00 06[fa]fa fa fa 00 00 00 00
+  0x36c002f0: 00 00 04 fa fa fa fa fa 00 00 00 00 00 00 04 fa
+  0x36c00300: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x36c00310: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x36c00320: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x36c00330: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07
+  Heap left redzone:       fa
+  Heap right redzone:      fb
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack partial redzone:   f4
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+==7737==ABORTING
+```
+
+
+Please check if you are able to reproduce the issue via the [Reproducer file](https://github.com/SegfaultMasters/covering360/blob/master/tcpreplay/csum_replace4_03)
+
+
+
+
+## Use-after-free in post_args()
+
+A heap use-after-free issue exists in tcpbridge binary of tcpreplay, being triggered in function `post_args()` at file `src/tcpbridge.c`.
+
+
+
+### **Tested version:** 
+4.3.0-beta1
+
+ 
+### **Command:**
+tcpbridge --intf1=en7
+
+
+### **Debugging**
+
+
+```
+Source - tcpbridge.c:219
+
+214             if ((eth_buff = sendpacket_get_hwaddr(sp)) == NULL) {
+215                 warnx("Unable to get MAC address: %s", sendpacket_geterr(sp));
+216                 err(-1, "Please consult the man page for using the -M option.");
+217             }
+218             sendpacket_close(sp);  // Freed
+219             memcpy(options.intf1_mac, eth_buff, ETHER_ADDR_LEN);  //use-after-free - Invalid read
+220         }
+
+```
+
+
+```
+gef> p sp
+$1 = (sendpacket_t *) 0xb4203680
+
+gef> ptype eth_buff
+type = struct tcpr_ether_addr {
+    uint8_t ether_addr_octet[6];
+} *
+```
+
+
+### **ASAN Report** 
+
+```
+==21234==ERROR: AddressSanitizer: heap-use-after-free on address 0xb4203b38 at pc 0x0804e6e3 bp 0xbffff1e8 sp 0xbffff1d8
+READ of size 6 at 0xb4203b38 thread T0
+    #0 0x804e6e2 in post_args /home/loginsoft/ACE/tcpreplay/src/tcpbridge.c:219
+    #1 0x804d48a in main /home/loginsoft/ACE/tcpreplay/src/tcpbridge.c:72
+    #2 0xb7835636 in __libc_start_main (/lib/i386-linux-gnu/libc.so.6+0x18636)
+    #3 0x804a955  (/usr/local/bin/tcpbridge+0x804a955)
+
+0xb4203b38 is located 1208 bytes inside of 1240-byte region [0xb4203680,0xb4203b58)
+freed by thread T0 here:
+    #0 0xb7ad0a84 in free (/usr/lib/i386-linux-gnu/libasan.so.2+0x96a84)
+    #1 0x807b714 in _our_safe_free /home/loginsoft/ACE/tcpreplay/src/common/utils.c:118
+    #2 0x807f34e in sendpacket_close /home/loginsoft/ACE/tcpreplay/src/common/sendpacket.c:636
+    #3 0x804e677 in post_args /home/loginsoft/ACE/tcpreplay/src/tcpbridge.c:218
+    #4 0x804d48a in main /home/loginsoft/ACE/tcpreplay/src/tcpbridge.c:72
+    #5 0xb7835636 in __libc_start_main (/lib/i386-linux-gnu/libc.so.6+0x18636)
+
+previously allocated by thread T0 here:
+    #0 0xb7ad0dee in malloc (/usr/lib/i386-linux-gnu/libasan.so.2+0x96dee)
+    #1 0x807b4b0 in _our_safe_malloc /home/loginsoft/ACE/tcpreplay/src/common/utils.c:50
+    #2 0x807ff10 in sendpacket_open_pf /home/loginsoft/ACE/tcpreplay/src/common/sendpacket.c:956
+    #3 0x807e932 in sendpacket_open /home/loginsoft/ACE/tcpreplay/src/common/sendpacket.c:523
+    #4 0x804e4f3 in post_args /home/loginsoft/ACE/tcpreplay/src/tcpbridge.c:211
+    #5 0x804d48a in main /home/loginsoft/ACE/tcpreplay/src/tcpbridge.c:72
+    #6 0xb7835636 in __libc_start_main (/lib/i386-linux-gnu/libc.so.6+0x18636)
+
+SUMMARY: AddressSanitizer: heap-use-after-free /home/loginsoft/ACE/tcpreplay/src/tcpbridge.c:219 post_args
+Shadow bytes around the buggy address:
+  0x36840710: fd fd fd fd fd fd fd fd fd fd fd fd fd fd fd fd
+  0x36840720: fd fd fd fd fd fd fd fd fd fd fd fd fd fd fd fd
+  0x36840730: fd fd fd fd fd fd fd fd fd fd fd fd fd fd fd fd
+  0x36840740: fd fd fd fd fd fd fd fd fd fd fd fd fd fd fd fd
+  0x36840750: fd fd fd fd fd fd fd fd fd fd fd fd fd fd fd fd
+=>0x36840760: fd fd fd fd fd fd fd[fd]fd fd fd fa fa fa fa fa
+  0x36840770: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x36840780: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x36840790: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x368407a0: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x368407b0: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07
+  Heap left redzone:       fa
+  Heap right redzone:      fb
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack partial redzone:   f4
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+==21234==ABORTING
+```
+
+No reproducer file required. 
