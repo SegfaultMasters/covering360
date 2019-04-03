@@ -1,0 +1,1 @@
+Libsndfile is a library of C routines for reading and writing files containing sampled audio data. It is a C library for reading and writing files containing sampled sound, through one standard library interface
